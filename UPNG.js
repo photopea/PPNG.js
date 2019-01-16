@@ -164,6 +164,21 @@ UPNG.decode = function(buff)
 			var text  = bin.readUTF8(data, off, len-(off-offset));
 			out.tabs[type][keyw] = text;
 		}
+        else if(type=="zTXt") {
+            if(out.tabs[type]==null) out.tabs[type] = {};
+            var nz = bin.nextZero(data, offset);
+            var keyw = bin.readASCII(data, offset, nz-offset);
+
+            // deflate/inflate (0) only supported compression method
+            var method = data[nz+1];
+            if (method!=0) {
+                throw "Invalid compression method: " + method;
+            }
+
+            // inflate bytes immediately after compression method
+            var bytes = bin.readBytes(data, nz+2, offset+len-nz-2);
+            out.tabs[type][keyw] = UPNG.decode._inflate(bytes, {to: "string"});
+        }
 		else if(type=="PLTE") {
 			out.tabs[type] = bin.readBytes(data, offset, len);
 		}
@@ -209,7 +224,7 @@ UPNG.decode._decompress = function(out, dd, w, h) {
 	return dd;
 }
 
-UPNG.decode._inflate = function(data) {  return pako["inflate"](data);  }
+UPNG.decode._inflate = function(data, options) {  return pako["inflate"](data, options);  }
 
 UPNG.decode._readInterlace = function(data, out)
 {
